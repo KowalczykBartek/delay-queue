@@ -20,7 +20,6 @@ public class ScheduleClient {
     }
 
     public CompletableFuture<Object> scheduleEvent(final long when, final String messageId, final String message) {
-
         final CompletableFuture<Object> scheduleResult = new CompletableFuture<>();
 
         final String hsetQuery = "HSET messages " + messageId + " \"" + message + "\"";
@@ -47,5 +46,41 @@ public class ScheduleClient {
                 });
 
         return scheduleResult;
+    }
+
+    public CompletableFuture<Object> queryMessages(final long now) {
+        final CompletableFuture<Object> queryResult = new CompletableFuture<>();
+
+        //damm, this is unlimited :/
+        redisClient.query("ZRANGE queue 0 " + now)
+                .thenAccept(object -> {
+                    queryResult.complete(object);
+                });
+
+        return queryResult;
+    }
+
+    public CompletableFuture<Object> popMessage(final String messageId) {
+        final CompletableFuture<Object> popResult = new CompletableFuture<>();
+
+        //FIXME
+        final long FIXME = System.currentTimeMillis();
+
+        final String zaddQuery = "ZADD unacks " + FIXME + " \"" + messageId + "\"";
+        redisClient.query(zaddQuery)
+                .thenCompose(result -> {
+                    LOG.info("{} {}", zaddQuery, result);
+
+                    final String zremnQuery = "ZREM queue \"" + messageId + "\"";
+                    return redisClient.query(zremnQuery)
+                            .thenAccept(zremResult -> LOG.info("{} {}", zremnQuery, result));
+                })
+                .thenCompose(zremnQuery -> {
+                    final String hgetQuery = "HSET messages field1 \"" + messageId + "\"";
+                    return redisClient.query(hgetQuery)
+                            .thenAccept(hgetResult -> LOG.info("{} {}", hgetQuery, hgetResult));
+                });
+
+        return popResult;
     }
 }

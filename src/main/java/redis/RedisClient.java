@@ -8,6 +8,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.redis.InlineCommandRedisMessage;
 import io.netty.handler.codec.redis.RedisDecoder;
 import io.netty.handler.codec.redis.RedisEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +35,7 @@ public class RedisClient {
                     @Override
                     protected void initChannel(final SocketChannel ch) {
                         final ChannelPipeline pipeline = ch.pipeline();
-//                        pipeline.addLast(new LoggingHandler(LogLevel.INFO));
+                        pipeline.addLast(new LoggingHandler(LogLevel.INFO));
                         pipeline.addLast(new RedisEncoder());
                         pipeline.addLast(new RedisDecoder());
                         pipeline.addLast(dispatcher);
