@@ -76,9 +76,16 @@ public class ScheduleClient {
                             .thenAccept(zremResult -> LOG.info("{} {}", zremnQuery, result));
                 })
                 .thenCompose(zremnQuery -> {
-                    final String hgetQuery = "HSET messages field1 \"" + messageId + "\"";
+                    final String hgetQuery = "HGET messages \"" + messageId + "\"";
                     return redisClient.query(hgetQuery)
-                            .thenAccept(hgetResult -> LOG.info("{} {}", hgetQuery, hgetResult));
+                            .thenAccept(hgetResult -> {
+                                LOG.info("{} {}", hgetQuery, hgetResult);
+                                popResult.complete(hgetResult);
+                            });
+                })
+                .exceptionally(throwable -> {
+                    popResult.completeExceptionally(throwable);
+                    return null;
                 });
 
         return popResult;
