@@ -1,3 +1,5 @@
+package playground;
+
 import scheduling.ScheduleClient;
 
 public class ScheduleClientTest {

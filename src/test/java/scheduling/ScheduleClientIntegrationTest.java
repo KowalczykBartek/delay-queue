@@ -9,6 +9,7 @@ import redis.clients.jedis.Tuple;
 import redis.embedded.RedisServer;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -81,13 +82,14 @@ public class ScheduleClientIntegrationTest {
 
         //when
         scheduleClient.scheduleEvent(toBeScheduled, messageId, sampleMessage).join();
-        final String[] emptyResult = (String[]) scheduleClient.queryMessages(System.currentTimeMillis()).join();
-        final String[] scheduledEvent = (String[]) scheduleClient.queryMessages(System.currentTimeMillis() + moreThanTenMinutes).join();
+        final String[] emptyResult = (String[]) scheduleClient.queryScheduledMessages(System.currentTimeMillis()).join();
+        final String[] scheduledEvent = (String[]) scheduleClient.queryScheduledMessages(System.currentTimeMillis() + moreThanTenMinutes).join();
 
         //then
         assertThat(emptyResult).isEmpty();
-        assertThat(scheduledEvent).hasSize(1);
+        assertThat(scheduledEvent).hasSize(2);
         assertThat(scheduledEvent[0]).isEqualTo(messageId);
+        assertThat(scheduledEvent[1]).isEqualTo(toBeScheduled + "");
     }
 
     @Test
@@ -105,14 +107,18 @@ public class ScheduleClientIntegrationTest {
         scheduleClient.scheduleEvent(toBeScheduled, messageId + "3", sampleMessage).join();
         scheduleClient.scheduleEvent(toBeScheduled, messageId + "4", sampleMessage).join();
 
-        final String[] scheduledEvent = (String[]) scheduleClient.queryMessages(System.currentTimeMillis() + moreThanTenMinutes).join();
+        final String[] scheduledEvent = (String[]) scheduleClient.queryScheduledMessages(System.currentTimeMillis() + moreThanTenMinutes).join();
 
         //then
-        assertThat(scheduledEvent).hasSize(4);
+        assertThat(scheduledEvent).hasSize(8);
         assertThat(scheduledEvent[0]).isEqualTo(messageId + "1");
-        assertThat(scheduledEvent[1]).isEqualTo(messageId + "2");
-        assertThat(scheduledEvent[2]).isEqualTo(messageId + "3");
-        assertThat(scheduledEvent[3]).isEqualTo(messageId + "4");
+        assertThat(scheduledEvent[1]).isEqualTo(String.valueOf(toBeScheduled));
+        assertThat(scheduledEvent[2]).isEqualTo(messageId + "2");
+        assertThat(scheduledEvent[3]).isEqualTo(String.valueOf(toBeScheduled));
+        assertThat(scheduledEvent[4]).isEqualTo(messageId + "3");
+        assertThat(scheduledEvent[5]).isEqualTo(String.valueOf(toBeScheduled));
+        assertThat(scheduledEvent[6]).isEqualTo(messageId + "4");
+        assertThat(scheduledEvent[7]).isEqualTo(String.valueOf(toBeScheduled));
     }
 
     @Test
@@ -127,7 +133,7 @@ public class ScheduleClientIntegrationTest {
         scheduleClient.scheduleEvent(toBeScheduled, messageId, sampleMessage).join();
 
         //get the message
-        final String message = (String) scheduleClient.popMessage(messageId).join();
+        final String message = (String) scheduleClient.popMessage(toBeScheduled, messageId).join();
 
         //then
         assertThat(message).isEqualTo(sampleMessage);
@@ -140,6 +146,40 @@ public class ScheduleClientIntegrationTest {
         //delayed message should be removed from core queue
         final Set<String> queue = jedis.zrange("queue", 0, -1);
         assertThat(queue).isEmpty();
+    }
+
+    @Test
+    public void shouldAckMessage()
+    {
+        //given
+        final long tenMinutes = 10 * 1000;
+        final long toBeScheduled = System.currentTimeMillis() + tenMinutes;
+        final String messageId = "messageId";
+        final String sampleMessage = "test";
+
+        //when
+        scheduleClient.scheduleEvent(toBeScheduled, messageId, sampleMessage).join();
+        scheduleClient.popMessage(toBeScheduled, messageId).join();
+
+        //lets ensure intermediate state
+
+        //message should also be put to UNACK queue
+        final Set<String> unacks = jedis.zrange("unacks", 0, -1);
+        assertThat(unacks).hasSize(1);
+        assertThat(unacks.iterator().next()).isEqualTo(messageId);
+
+        //delayed message should be removed from core queue
+        final Set<String> queue = jedis.zrange("queue", 0, -1);
+        assertThat(queue).isEmpty();
+
+        //ack
+        scheduleClient.ackMessage(messageId).join();
+
+        //then
+        final Set<String> emptyUnacks = jedis.zrange("unacks", 0, -1);
+        final Map<String, String> messages = jedis.hgetAll("messages");
+        assertThat(emptyUnacks).isEmpty();
+        assertThat(messages).isEmpty();
 
     }
 }

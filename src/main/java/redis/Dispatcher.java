@@ -111,11 +111,7 @@ public class Dispatcher extends SimpleChannelInboundHandler<RedisMessage> {
                 tmpBuf.readBytes(bytes);
                 final String message = new String(bytes);
 
-                try {
-                    completableFuture.complete(message);
-                } catch (final Exception ex) {
-                    System.gc();
-                }
+                completableFuture.complete(message);
 
                 return true;
             } else if (msg instanceof DefaultBulkStringRedisContent) {
@@ -150,6 +146,12 @@ public class Dispatcher extends SimpleChannelInboundHandler<RedisMessage> {
             if (msg instanceof ArrayHeaderRedisMessage) {
                 length = ((ArrayHeaderRedisMessage) msg).length();
                 messages = new String[(int) length];
+
+                if (length == 0) {
+                    completableFuture.complete(new String[]{});
+                    return true;
+                }
+
                 return false;
             } else if (msg instanceof BulkStringHeaderRedisMessage) {
                 final BulkStringHeaderRedisMessage bulkMsg = (BulkStringHeaderRedisMessage) msg;
