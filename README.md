@@ -19,3 +19,5 @@ curl --request PUT \
 	}
 }'
 ```
+
+[license img]:https://img.shields.io/badge/License-Apache%202-blue.svg
