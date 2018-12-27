@@ -1,5 +1,6 @@
 package scheduling;
 
+import io.netty.channel.EventLoopGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.RedisClient;
@@ -97,6 +98,11 @@ public class ScheduleClient {
                 });
 
         return ackResult;
+    }
+
+    public EventLoopGroup getLoop()
+    {
+        return redisClient.getLoop();
     }
 
 }
