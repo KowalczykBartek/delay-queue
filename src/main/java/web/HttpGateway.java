@@ -34,7 +34,7 @@ public class HttpGateway {
 
         server.requestHandler(router::accept);
 
-        server.listen(8080, "localhost", res -> {
+        server.listen(8080, "0.0.0.0", res -> {
             if (res.succeeded()) {
                 LOG.info("Server is now listening!");
             } else {
