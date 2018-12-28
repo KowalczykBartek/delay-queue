@@ -23,7 +23,14 @@ public class CoreLoop {
                 .thenCompose(queryResult -> {
                     final String[] messages = (String[]) queryResult;
 
-                    LOG.info("Processing returned messages");
+                    if (messages.length == 0) {
+                        LOG.info("skipping - no messages to process");
+                        final CompletableFuture<Void> empty = new CompletableFuture<>();
+                        empty.complete(null);
+                        return empty;
+                    }
+
+                    LOG.info("Processing {} returned messages", messages.length);
 
                     final List<CompletableFuture<Object>> results = new ArrayList<>(messages.length / 2);
 
@@ -38,7 +45,8 @@ public class CoreLoop {
                                 .thenCompose(popResult -> {
 
                                     LOG.info("Processing message messageId: {} event: {}", messageId, popResult);
-                                    //MESSAGE PROCESSING HERE
+
+
                                     return scheduleClient.ackMessage(messageId);
                                 });
 
@@ -48,7 +56,7 @@ public class CoreLoop {
                     return CompletableFuture.allOf(results.toArray(new CompletableFuture[results.size()]));
                 })
                 .thenAccept(asd -> {
-                    LOG.info("Executing CoreLoop.run from netty's executor");
+                    LOG.debug("Executing CoreLoop.run from netty's executor");
                     scheduleClient.getLoop().schedule(this::run, 1, TimeUnit.SECONDS);
                 })
                 .exceptionally(throwable -> {

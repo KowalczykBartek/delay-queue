@@ -5,7 +5,11 @@ App that allows to schedule message processing for some predefined delay. Main i
 
 
 ## how
-Just start an app (no gradle task :/) from App.java and prepare Redis instance on default port 6379 (and localhost of  course)
+Prepare Redis instance on default port 6379 (and localhost of  course) and invoke (to build and start).
+```
+./gradlew buildApp
+java -jar ./build/libs/scheduler-server-1.0-SNAPSHOT.jar
+```
 
 Then just make a curl
 ```bash

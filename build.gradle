@@ -5,6 +5,17 @@ plugins {
 group 'scheduler'
 version '1.0-SNAPSHOT'
 
+task buildApp(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Just an app',
+                'Implementation-Version': version,
+                'Main-Class': 'App'
+    }
+    baseName = project.name + '-server'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
 sourceCompatibility = 1.8
 
 repositories {

@@ -8,32 +8,29 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.redis.InlineCommandRedisMessage;
 import io.netty.handler.codec.redis.RedisDecoder;
 import io.netty.handler.codec.redis.RedisEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Single threaded Redis connector.
+ * Redis client maintaining single, persistent connection.
  */
 public class RedisClient {
     private static final Logger LOG = LoggerFactory.getLogger(RedisClient.class);
+    private static final EventLoopGroup SHARED_EVENT_LOOP_GROUP = new NioEventLoopGroup(4);
     private final ChannelFuture channelFuture;
     private final Bootstrap bootstrap;
-    private final EventLoopGroup group;
     private volatile Channel channel;
     private final Dispatcher dispatcher;
 
     public RedisClient() {
         final ClientConfig clientConfig = new ClientConfig();
-        group = new NioEventLoopGroup(1);
 
         dispatcher = new Dispatcher(clientConfig.getMaxConcurrentRequests());
 
         bootstrap = new Bootstrap();
-        bootstrap.group(group).channel(NioSocketChannel.class)//
+        bootstrap.group(SHARED_EVENT_LOOP_GROUP).channel(NioSocketChannel.class)//
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(final SocketChannel ch) {
@@ -45,7 +42,7 @@ public class RedisClient {
                     }
                 });
 
-        channelFuture = bootstrap.connect("127.0.0.1", 6379);
+        channelFuture = bootstrap.connect(clientConfig.getHost(), clientConfig.getPort());
         channel = channelFuture.channel();
     }
 
@@ -70,9 +67,8 @@ public class RedisClient {
         return completableFuture;
     }
 
-    public EventLoopGroup getLoop()
-    {
-        return group;
+    public EventLoop getLoop() {
+        return channel.eventLoop();
     }
 
     private void addAndWrite(final CompletableFuture<Object> completableFuture, final String query) {
