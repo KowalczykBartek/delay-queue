@@ -8,6 +8,8 @@ import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import playground.ExampleNotificationHandler;
+import playground.ReceivedMessageBridge;
 import scheduling.ScheduleClient;
 
 /**
@@ -16,7 +18,7 @@ import scheduling.ScheduleClient;
 public class HttpGateway {
     private static final Logger LOG = LoggerFactory.getLogger(HttpGateway.class);
 
-    public void start() {
+    public void start(final ReceivedMessageBridge receivedMessageBridge) {
         final Vertx vertx = Vertx.vertx();
 
         final ScheduleClient scheduleClient = new ScheduleClient();
@@ -35,6 +37,12 @@ public class HttpGateway {
                 .handler(BodyHandler.create())//
                 .handler(storeMessageHandler);
 
+        /**
+         * This is not part of the API.
+         */
+        final ExampleNotificationHandler exampleNotificationHandler = new ExampleNotificationHandler(vertx, receivedMessageBridge);
+        router.route(HttpMethod.GET, "/subscribe")
+                .handler(exampleNotificationHandler);
 
         server.requestHandler(router::accept);
 

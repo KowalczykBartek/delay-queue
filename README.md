@@ -25,4 +25,11 @@ curl --request PUT \
 ```
 Also, if you prefer to use your browser, Swagger console is available on port 8080.
 
+##example messages consumption
+Because looking at logs is not best option to show how something works - you can subscribe on all incoming delayed events:
+```
+curl --raw 127.0.0.1:8080/subscribe -v -k
+```
+as response, you will receive all events received from delay-queue application (this endpoint is chunked).
+
 [license img]:https://img.shields.io/badge/License-Apache%202-blue.svg

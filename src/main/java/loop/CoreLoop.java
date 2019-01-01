@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Main component - instance of this class, will query REDIS each X milliseconds for messages to consumer.
@@ -17,9 +18,11 @@ public class CoreLoop {
     private static final Logger LOG = LoggerFactory.getLogger(CoreLoop.class);
 
     private final ScheduleClient scheduleClient;
+    private final Consumer<String> messageConsumer;
 
-    public CoreLoop() {
-        scheduleClient = new ScheduleClient();
+    public CoreLoop(final Consumer<String> messageConsumer) {
+        this.scheduleClient = new ScheduleClient();
+        this.messageConsumer = messageConsumer;
     }
 
     public void run() {
@@ -43,7 +46,7 @@ public class CoreLoop {
                     final List<CompletableFuture<Object>> results = new ArrayList<>(messages.length / 2);
 
                     /*
-                     * When more than X messaged come at the same moment, loop can be blocked - that is  bad :/
+                     * When more than X messaged come at the same moment, loop can be blocked - that is bad :/
                      * FIXME
                      */
                     for (int i = 0; i < messages.length; i = i + 2) {
@@ -55,6 +58,13 @@ public class CoreLoop {
                         final long longScore = Long.parseLong(score);
                         final CompletableFuture<Object> processingResult = scheduleClient.popMessage(longScore, messageId)
                                 .thenCompose(popResult -> {
+
+                                    /*
+                                     * FIXME that should somehow allow for ACK or UN-ACK for processed message
+                                     * at the moment just allow for any interaction with received message.
+                                     */
+                                    messageConsumer.accept((String) popResult);
+
                                     LOG.info("Processing message messageId: {} event: {}", messageId, popResult);
                                     return scheduleClient.ackMessage(messageId);
                                 });
