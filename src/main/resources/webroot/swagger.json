@@ -3,7 +3,7 @@
   "info": {
     "description": "Sample server for delay-queue",
     "version": "1.0.0",
-    "title": "Swagger delay-queue REST Api",
+    "title": "Swagger delay-queue REST API",
     "license": {
       "name": "Apache 2.0",
       "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
@@ -17,7 +17,7 @@
           {
             "in": "body",
             "name": "body",
-            "description": "scheduled message",
+            "description": "Schedule a new message.",
             "required": true,
             "schema": {
               "$ref": "#/definitions/Message"
@@ -50,7 +50,7 @@
           {
             "in": "body",
             "name": "body",
-            "description": "scheduled message",
+            "description": "Schedule a new message.",
             "required": true,
             "schema": {
               "$ref": "#/definitions/Message"
@@ -74,12 +74,18 @@
       "type": "object",
       "properties": {
         "when": {
-          "type": "integer",
-          "example": 1546125386109,
-          "format": "int64"
+          "type": "string",
+          "example": "2007-12-03T10:15:30.00Z",
+          "format": "string"
         },
         "event": {
           "type": "object"
+        }
+      },
+      "example": {
+        "when": "2007-12-03T10:15:30.00Z",
+        "event": {
+          "message": "hello"
         }
       }
     }

@@ -11,7 +11,7 @@ Prepare Redis instance on default port 6379 (and localhost of  course) and invok
 java -jar ./build/libs/scheduler-server-1.0-SNAPSHOT.jar
 ```
 
-Then just make a curl
+Then just make a curl to schedule message.
 ```bash
 curl --request PUT \
   --url http://localhost:8080/messages/someId \
@@ -23,5 +23,6 @@ curl --request PUT \
 	}
 }'
 ```
+Also, if you prefer to use your browser, Swagger console is available on port 8080.
 
 [license img]:https://img.shields.io/badge/License-Apache%202-blue.svg

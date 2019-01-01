@@ -8,6 +8,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.redis.InlineCommandRedisMessage;
 import io.netty.handler.codec.redis.RedisDecoder;
 import io.netty.handler.codec.redis.RedisEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.parser.RedisMessageParser;
@@ -23,12 +25,12 @@ public class RedisClient {
     private final ChannelFuture channelFuture;
     private final Bootstrap bootstrap;
     private volatile Channel channel;
-    private final RedisMessageParser dispatcher;
+    private final RedisMessageParser parser;
 
     public RedisClient() {
         final ClientConfig clientConfig = new ClientConfig();
 
-        dispatcher = new RedisMessageParser(clientConfig.getMaxConcurrentRequests());
+        parser = new RedisMessageParser(clientConfig.getMaxConcurrentRequests());
 
         bootstrap = new Bootstrap();
         bootstrap.group(SHARED_EVENT_LOOP_GROUP).channel(NioSocketChannel.class)//
@@ -36,10 +38,10 @@ public class RedisClient {
                     @Override
                     protected void initChannel(final SocketChannel ch) {
                         final ChannelPipeline pipeline = ch.pipeline();
-                        //pipeline.addLast(new LoggingHandler(LogLevel.INFO));
+                        pipeline.addLast(new LoggingHandler(LogLevel.INFO));
                         pipeline.addLast(new RedisEncoder());
                         pipeline.addLast(new RedisDecoder());
-                        pipeline.addLast(dispatcher);
+                        pipeline.addLast(parser);
                     }
                 });
 
@@ -75,14 +77,14 @@ public class RedisClient {
     private void addAndWrite(final CompletableFuture<Object> completableFuture, final String query) {
 
         /*
-         * I will not implement back-pressure - will just throw an exception.
+         * I will not implement back-pressure at the moment - will just throw an exception.
          */
         if (!channel.isWritable()) {
             completableFuture.completeExceptionally(new RuntimeException("Channel not writable !"));
         }
 
         final InlineCommandRedisMessage command = new InlineCommandRedisMessage(query);
-        if (!dispatcher.registerCallback(completableFuture)) {
+        if (!parser.registerCallback(completableFuture)) {
             completableFuture.completeExceptionally(new RuntimeException("Too much concurrent requests !"));
         } else {
             channel.write(command);
