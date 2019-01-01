@@ -10,6 +10,7 @@ import io.netty.handler.codec.redis.RedisDecoder;
 import io.netty.handler.codec.redis.RedisEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.parser.RedisMessageParser;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -22,12 +23,12 @@ public class RedisClient {
     private final ChannelFuture channelFuture;
     private final Bootstrap bootstrap;
     private volatile Channel channel;
-    private final Dispatcher dispatcher;
+    private final RedisMessageParser dispatcher;
 
     public RedisClient() {
         final ClientConfig clientConfig = new ClientConfig();
 
-        dispatcher = new Dispatcher(clientConfig.getMaxConcurrentRequests());
+        dispatcher = new RedisMessageParser(clientConfig.getMaxConcurrentRequests());
 
         bootstrap = new Bootstrap();
         bootstrap.group(SHARED_EVENT_LOOP_GROUP).channel(NioSocketChannel.class)//
