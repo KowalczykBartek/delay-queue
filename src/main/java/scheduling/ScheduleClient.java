@@ -100,9 +100,7 @@ public class ScheduleClient {
         return ackResult;
     }
 
-    public EventLoop getLoop()
-    {
+    public EventLoop getLoop() {
         return redisClient.getLoop();
     }
-
 }

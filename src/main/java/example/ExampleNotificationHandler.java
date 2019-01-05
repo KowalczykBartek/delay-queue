@@ -1,46 +1,44 @@
-package playground;
+package example;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
+import org.jctools.queues.SpmcArrayQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
- * Handler created to enable integration from the web (for example curl)
- * <p>
+ * Handler created to enable integration from the web (for example curl).
  * Each incoming connection is register inside Set, and all subsequent received messages (from fetching loop)
- * is pushed to awaiting client, using simplest HTTP chunking :)
+ * are pushed to awaiting client, using simplest HTTP chunking :)
  */
 public class ExampleNotificationHandler implements Handler<RoutingContext> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ExampleNotificationHandler.class);
+    private final SpmcArrayQueue<String> receivedMessagesQueue;
 
-    final ReceivedMessageBridge receivedMessageBridge;
-    final HashSet<HttpServerResponse> waitingRequests = new HashSet<>();
+    //that is not thread-safe implementation because all accessed are from the same thread.
+    private final Set<HttpServerResponse> waitingRequests = new HashSet<>();
 
-    public ExampleNotificationHandler(final Vertx vertx, final ReceivedMessageBridge receivedMessageBridge) {
-        this.receivedMessageBridge = receivedMessageBridge;
+    public ExampleNotificationHandler(final Vertx vertx, final SpmcArrayQueue<String> receivedMessagesQueue) {
+        this.receivedMessagesQueue = receivedMessagesQueue;
 
         /*
          * Because implementing PUSH mechanism on all connections would be more complex than just periodic fetch
          * already received messages - I did pull - this is sufficient, especially that this is just example.
          */
         vertx.setPeriodic(100, hmm -> {
-            final Iterator<HttpServerResponse> iterator = waitingRequests.iterator();
 
+            final Iterator<HttpServerResponse> iterator = waitingRequests.iterator();
             /*
              * That is quite relaxed way to get messages, but even if we drop something, nothing special happens.
              */
             final List<String> messages = new ArrayList<>();
-            receivedMessageBridge.receivedMessagesQueue.drain(messages::add);
+            receivedMessagesQueue.drain(messages::add);
 
             while (iterator.hasNext()) {
                 final HttpServerResponse request = iterator.next();

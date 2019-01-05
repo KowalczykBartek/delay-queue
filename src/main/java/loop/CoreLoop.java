@@ -1,5 +1,6 @@
 package loop;
 
+import contract.DelayedEventProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scheduling.ScheduleClient;
@@ -8,21 +9,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
- * Main component - instance of this class, will query REDIS each X milliseconds for messages to consumer.
- * FIXME ATM message is just ignored.
+ * Main component - instance of this class, will query REDIS each X milliseconds for messages to consume and if any
+ * will be received (so, our delayed-message), core-loop wil pass such message to {@class contract.DelayedEventProcessor} instance.
  */
 public class CoreLoop {
     private static final Logger LOG = LoggerFactory.getLogger(CoreLoop.class);
 
     private final ScheduleClient scheduleClient;
-    private final Consumer<String> messageConsumer;
+    private final DelayedEventProcessor eventProcessor;
 
-    public CoreLoop(final Consumer<String> messageConsumer) {
+    public CoreLoop(final DelayedEventProcessor eventProcessor) {
         this.scheduleClient = new ScheduleClient();
-        this.messageConsumer = messageConsumer;
+        this.eventProcessor = eventProcessor;
+
+        eventProcessor.init();
     }
 
     public void run() {
@@ -35,7 +37,7 @@ public class CoreLoop {
                     final String[] messages = (String[]) queryResult;
 
                     if (messages.length == 0) {
-                        LOG.info("skipping - no messages to process");
+                        LOG.debug("skipping - no messages to process");
                         final CompletableFuture<Void> empty = new CompletableFuture<>();
                         empty.complete(null);
                         return empty;
@@ -58,15 +60,15 @@ public class CoreLoop {
                         final long longScore = Long.parseLong(score);
                         final CompletableFuture<Object> processingResult = scheduleClient.popMessage(longScore, messageId)
                                 .thenCompose(popResult -> {
-
-                                    /*
-                                     * FIXME that should somehow allow for ACK or UN-ACK for processed message
-                                     * at the moment just allow for any interaction with received message.
-                                     */
-                                    messageConsumer.accept((String) popResult);
-
-                                    LOG.info("Processing message messageId: {} event: {}", messageId, popResult);
-                                    return scheduleClient.ackMessage(messageId);
+                                    LOG.debug("Processing message messageId: {} event: {}", messageId, popResult);
+                                    final boolean messageProcessed = eventProcessor.consume((String) popResult);
+                                    if (messageProcessed) {
+                                        LOG.debug("message with messageId: {} processed - ack");
+                                        return scheduleClient.ackMessage(messageId);
+                                    } else {
+                                        LOG.debug("message with messageId: {} ignored - ack abandoned");
+                                        return CompletableFuture.completedFuture(null);
+                                    }
                                 });
 
                         results.add(processingResult);
@@ -74,7 +76,7 @@ public class CoreLoop {
 
                     return CompletableFuture.allOf(results.toArray(new CompletableFuture[results.size()]));
                 })
-                .thenAccept(asd -> {
+                .thenAccept(oneRoundProcessed -> {
                     LOG.debug("Executing CoreLoop.run from netty's executor");
                     scheduleClient.getLoop().schedule(this::run, 500, TimeUnit.MILLISECONDS);
                 })

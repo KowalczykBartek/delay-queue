@@ -15,7 +15,7 @@ import redis.parser.RedisMessageParser;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Redis client maintaining single, persistent connection.
+ * Redis client maintaining single, persistent connection but register in one of shared threads (SHARED_EVENT_LOOP_GROUP)
  */
 public class RedisClient {
     private static final Logger LOG = LoggerFactory.getLogger(RedisClient.class);
