@@ -35,4 +35,17 @@ as response, you will receive all events received from delay-queue application (
 
 Entire stuff that is responsible for handling this endpoint and delay-messages consumption is stored under "example" package
 
+## stressing
+from time to time it is good to try to kill your application (which you are actually developing), if you want
+to do that with delay-queue, I prepared command line for you (I used wrk)
+```
+./wrk -t14 -c300 -d400 -s ./redis.lua http://localhost:8080/messages
+```
+where redis.lua is
+```
+wrk.method = "POST"
+wrk.body = "{\"when\" : \"2018-12-28T21:58:00.00Z\",\"event\" : {\"message\" : \"hello\"}}"
+```
+happy shooting !
+
 [license img]:https://img.shields.io/badge/License-Apache%202-blue.svg
