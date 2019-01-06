@@ -24,8 +24,8 @@ repositories {
 
 dependencies {
     
-    compile group: 'io.vertx', name: 'vertx-core', version: '3.5.0'
-    compile group: 'io.vertx', name: 'vertx-web', version: '3.5.0'
+    compile group: 'io.vertx', name: 'vertx-core', version: '3.6.0'
+    compile group: 'io.vertx', name: 'vertx-web', version: '3.6.0'
     
     compile 'io.netty:netty-all:4.1.28.Final'
     compile 'org.jctools:jctools-core:2.1.1'

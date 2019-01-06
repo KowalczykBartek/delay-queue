@@ -43,13 +43,12 @@ public class StoreMessageHandler implements Handler<RoutingContext> {
         try {
             final String safeEvent = StringEscapeUtils.escapeJava(event);
             scheduleClient.scheduleEvent(when, messageId, safeEvent)
-                    .thenAccept(result -> {
-                        /**
-                         * Event is scheduled and processed by thread not owned by Vert.x, because of that,
-                         * this will not allow JVM to optimize synchronization action. TODO, FIXME
-                         */
-                        response.setStatusCode(200).end();
-                    })
+                    /**
+                     * This part can be tricky ! is possible that accept will be execute on one of two thraeds
+                     * - vert.x thread, when future will be completed faster than accept is registered (still wonder how it is possible)
+                     * - (mainly) on netty's nio thread (so, our  redis thread)
+                     */
+                    .thenAccept(result -> response.setStatusCode(200).end())
                     .exceptionally(throwable -> {
                         LOG.error("Error occurred {}", throwable);
                         response.setStatusCode(500).end();
