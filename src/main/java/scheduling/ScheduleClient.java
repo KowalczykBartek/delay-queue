@@ -20,21 +20,17 @@ public class ScheduleClient {
         redisClient.awaitConnection();
     }
 
-    public CompletableFuture<Object> scheduleEvent(final long when, final String messageId, final String message) {
-        final CompletableFuture<Object> scheduleResult = new CompletableFuture<>();
+    /**
+     * TODO docu
+     */
+    public CompletableFuture<Boolean> scheduleEvent(final long when, final String messageId, final String message) {
+        final CompletableFuture<Boolean> scheduleResult = new CompletableFuture<>();
 
-        final String hsetQuery = "HSET messages " + messageId + " \"" + message + "\"";
-        redisClient.query(hsetQuery)
+        redisClient.hset("messages", messageId, message)
                 .thenAccept(hsetResult -> {
-                    final String zaddQuery = "ZADD queue " + when + " \"" + messageId + "\"";
-                    redisClient.query(zaddQuery)
+                    redisClient.zadd("queue", when, messageId)
                             .thenAccept(zaddResult -> {
                                 scheduleResult.complete(true);
-                            })//
-                            .exceptionally(exception -> {
-                                LOG.error("{} {}", messageId, exception);
-                                scheduleResult.completeExceptionally(exception);
-                                return null;
                             });
                 })//
                 .exceptionally(exception -> {
@@ -46,51 +42,56 @@ public class ScheduleClient {
         return scheduleResult;
     }
 
-    public CompletableFuture<Object> queryScheduledMessages(final long now) {
-        final CompletableFuture<Object> queryResult = new CompletableFuture<>();
+    /**
+     * TODO docu
+     */
+    public CompletableFuture<String[]> queryScheduledMessages(final long now) {
+        final CompletableFuture<String[]> queryResult = new CompletableFuture<>();
 
-        //damm, this is unlimited :/
-        redisClient.query("ZRANGEBYSCORE queue 0 " + now + " WITHSCORES")
-                .thenAccept(object -> queryResult.complete(object));
+        //todo warn, unlimited query result
+        redisClient.zrangeByScore("queue", now)
+                .thenAccept(queryResult::complete)//
+                .exceptionally(exception -> {
+                    LOG.error("{} {}", exception);
+                    queryResult.completeExceptionally(exception);
+                    return null;
+                });
 
         return queryResult;
     }
 
-    public CompletableFuture<Object> popMessage(final long originalScheduleTime, final String messageId) {
-        final CompletableFuture<Object> popResult = new CompletableFuture<>();
+    /**
+     * TODO docu
+     */
+    public CompletableFuture<String> popMessage(final long originalScheduleTime, final String messageId) {
+        final CompletableFuture<String> popResult = new CompletableFuture<>();
 
-        final String zaddQuery = "ZADD unacks " + originalScheduleTime + " \"" + messageId + "\"";
-        redisClient.query(zaddQuery)
-                .thenCompose(result -> {
-                    final String zremnQuery = "ZREM queue \"" + messageId + "\"";
-                    return redisClient.query(zremnQuery);
-                })
-                .thenCompose(zremnQuery -> {
-                    final String hgetQuery = "HGET messages \"" + messageId + "\"";
-                    return redisClient.query(hgetQuery)
-                            .thenAccept(hgetResult -> {
-                                popResult.complete(hgetResult);
-                            });
-                })
+        redisClient.zadd("unacks", originalScheduleTime, messageId)
+                .thenCompose(result -> redisClient.zrem("queue", messageId))
+                .thenCompose(zremnQuery -> redisClient.hget("messages", messageId))
                 .exceptionally(throwable -> {
                     popResult.completeExceptionally(throwable);
+                    return null;
+                })
+                .thenApply(result -> {
+                    popResult.complete(result);
                     return null;
                 });
 
         return popResult;
     }
 
+    /**
+     * TODO docu
+     */
     public CompletableFuture<Object> ackMessage(final String messageId) {
         final CompletableFuture<Object> ackResult = new CompletableFuture<>();
 
-        final String zremQuery = "ZREM unacks " + " \"" + messageId + "\"";
-        redisClient.query(zremQuery)
-                .thenCompose(result -> {
-                    final String hdelQuery = "HDEL messages \"" + messageId + "\"";
-                    return redisClient.query(hdelQuery)
-                            .thenAccept(hdelResult -> {
-                                ackResult.complete(hdelResult);
-                            });
+        redisClient.zrem("unacks", messageId)
+                .thenCompose(result -> redisClient.hdel("messages", messageId))
+                .thenApply(result -> {
+                    ackResult.complete(result);
+                    return null;
                 })
                 .exceptionally(throwable -> {
                     ackResult.completeExceptionally(throwable);

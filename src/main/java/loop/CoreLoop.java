@@ -34,7 +34,7 @@ public class CoreLoop {
          */
         scheduleClient.queryScheduledMessages(getCurrentTimeMillis())
                 .thenCompose(queryResult -> {
-                    final String[] messages = (String[]) queryResult;
+                    final String[] messages = queryResult;
 
                     if (messages.length == 0) {
                         LOG.debug("skipping - no messages to process");

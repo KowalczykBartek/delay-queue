@@ -51,6 +51,92 @@ public class RedisClient {
         channelFuture.await();
     }
 
+    /**
+     * Perform HSET operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param messageId
+     * @param message
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<Long> hset(final String resource, final String messageId, final String message) {
+        final String hsetQuery = "HSET " + resource + " " + messageId + " \"" + message + "\"";
+        return query(hsetQuery)
+                .thenApply(hsetResult -> (Long) hsetResult);
+    }
+
+    /**
+     * Perform ZADD operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param when
+     * @param messageId
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<Long> zadd(final String resource, final long when, final String messageId) {
+        final String zaddQuery = "ZADD " + resource + " " + when + " \"" + messageId + "\"";
+        return query(zaddQuery)
+                .thenApply(hsetResult -> (Long) hsetResult);
+    }
+
+    /**
+     * Perform ZRANGEBYSCORE operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param now
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<String[]> zrangeByScore(final String resource, final long now) {
+        final String zrangeByScoreQuery = "ZRANGEBYSCORE " + resource + " 0 " + now + " WITHSCORES";
+        return query(zrangeByScoreQuery)
+                .thenApply(object -> (String[]) object);
+    }
+
+    /**
+     * Perform ZREM operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param messageId
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<Long> zrem(final String resource, final String messageId) {
+        final String zremnQuery = "ZREM " + resource + " \"" + messageId + "\"";
+        return query(zremnQuery)
+                .thenApply(object -> (Long) object);
+    }
+
+    /**
+     * Perform HGET operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param messageId
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<String> hget(final String resource, final String messageId) {
+        final String hgetQuery = "HGET " + resource + " \"" + messageId + "\"";
+        return query(hgetQuery)
+                .thenApply(hgetResult -> (String) hgetResult);
+    }
+
+    /**
+     * Perform HDEL operation and return value according to REDIS protocol.
+     *
+     * @param resource
+     * @param messageId
+     * @return CompletableFuture representing query result. Always completed on socket's loop, so you should
+     * never ever block it ! but you can gain because of TPC architecture.
+     */
+    public CompletableFuture<Long> hdel(final String resource, final String messageId) {
+        final String hdelQuery = "HDEL " + resource + " \"" + messageId + "\"";
+        return query(hdelQuery)
+                .thenApply(object -> (Long) object);
+    }
+
     public CompletableFuture<Object> query(final String query) {
         final CompletableFuture<Object> completableFuture = new CompletableFuture<>();
 
